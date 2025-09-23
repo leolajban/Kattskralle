@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="CONTENT-TYPE" content="text/html; charset=UTF-8">
+  <link rel="stylesheet" href="style.css"/>
+  <title>Kattskrälle</title>
+</head>
+<body>
+<div class="header-flex">
+  <h2>Kattskrälle</h2>
+   <img src="icons/icon128.png" alt="icon">
+</div>
+<p><u>The FB Forum QOL plugin.</u></p>
+<div id="settings"> 
+  <h3>Inställningar</h3>
+  <ul>
+    <li><label><input type="checkbox">Infinite Scroll</label></li>
+    <li><label><input type="checkbox">Previews</label></li>
+    <li><label><input type="checkbox">Ignorera</label></li>
+  </ul>
+</div>
+<div id="ignoreraListan">
+    <h3>Ignorerade Användare</h3>
+    <div id="ignoreList">
+      <input type="text" id="input" placeholder="Lägg till eller ta bort">
+      <button id="add">✓</button>
+    </div>
+    <ul id="list">
+    </ul>
+</div>
+<script src="main.js" type="text/javascript"></script>
+</body>
+</html>

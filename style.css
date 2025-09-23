@@ -1,0 +1,94 @@
+body{
+    background: #ccc;
+    font-family: 'Open Sans',"Helvetica Neue",Helvetica,Arial,sans-serif;
+}
+
+#ignoreraListan button{
+  background-color: black;
+  color: #ccc;
+  width: 20px;
+  height: 20px;
+  text-align: center;
+  display: inline-block;
+  border: 0px;
+}
+#ignoreraListan button:hover{
+  color: black;
+  background-color: #ccc;
+}
+
+#ignoreraListan ul{
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+
+#ignoreraListan .removeButton{
+  background-color: red;
+  color: white;
+}
+#ignoreraListan .removeButton:hover{
+  background-color: white;
+  color: red;
+}
+
+#ignoreraListan div{
+  display: flex;
+  justify-content: space-between;
+  width: 150px;
+  border: 1px solid black;
+}
+
+#ignoreraListan input{
+  width: 100%;
+  font-size: 12px;
+}
+
+#ignoreraListan .textSpanInList{
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  display: inline-block;
+  text-overflow: ellipsis;
+  font-size: 12px;
+}
+
+#ignoreraListan{
+  border: 1px solid black;
+}
+#settings{
+  border: 1px solid black;
+}
+
+#settings ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+
+#settings li {
+  margin: 6px 0;
+}
+
+
+#settings label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.header-flex {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+.header-flex h1 {
+  margin: 0;
+}
+.header-flex img {
+  width: 64px;
+  height: 64px;
+}

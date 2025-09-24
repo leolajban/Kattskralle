@@ -564,7 +564,21 @@ function initiatePageLoadForward(){
         highestPageLoaded++;
         if (!pagesLoaded.includes(highestPageLoaded)){
             let pageToLoadFrom=('https://www.flashback.org'+threadId+"p"+(highestPageLoaded))
-            //console.log("pageToLoadFrom:"+pageToLoadFrom);
+            // Insert loading separator at the end of posts
+            const postsContainer = document.getElementById('posts');
+            if (postsContainer && !document.getElementById('loadingPageSeparator')) {
+                const loadingSeparator = document.createElement('div');
+                loadingSeparator.className = 'pageSeparator';
+                loadingSeparator.id = 'loadingPageSeparator';
+                loadingSeparator.setAttribute('data-page', highestPageLoaded);
+                loadingSeparator.textContent = `Laddar sida ${highestPageLoaded}`;
+                loadingSeparator.style.fontSize = '20px';
+                loadingSeparator.style.background = '#7a7a7a';
+                loadingSeparator.style.color = '#fff';
+                loadingSeparator.style.textAlign = 'center';
+                loadingSeparator.style.width = '100%';
+                postsContainer.appendChild(loadingSeparator);
+            }
             fetchPostsFromPage(pageToLoadFrom);
             pagesLoaded.push(highestPageLoaded);
             //console.log("pagesLoaded:"+pagesLoaded);
@@ -581,7 +595,14 @@ function initiatePageLoadBackward(){
         lowestPageLoaded--;
         if (!pagesLoaded.includes(lowestPageLoaded)){
             let pageToLoadFrom=('https://www.flashback.org'+threadId+"p"+(lowestPageLoaded))
-            //console.log("pageToLoadFrom:"+pageToLoadFrom);
+            // Change button text to "Laddar sida X" and disable it
+            const btn = document.getElementById('loadLastPageButton');
+            if (btn) {
+                btn.textContent = `Laddar sida ${lowestPageLoaded}`;
+                btn.disabled = true;
+                btn.style.opacity = '0.7';
+                btn.style.pointerEvents = 'none';
+            }
             fetchPostsFromPage(pageToLoadFrom);
             pagesLoaded.push(lowestPageLoaded);
             //console.log("pagesLoaded:"+pagesLoaded);
@@ -613,13 +634,24 @@ function addLoadLastPageButton(){
     const loadLastPageButton = document.createElement('button');
     loadLastPageButton.id = 'loadLastPageButton';
     loadLastPageButton.className = 'loadLastPageButton load-page-button';
-    loadLastPageButton.innerHTML = 'Ladda sida ' + pageToLoad;
-    loadLastPageButton.style.fontSize = '20px';
-    loadLastPageButton.style.display = 'block';
-    loadLastPageButton.style.width = '100%';
-    loadLastPageButton.style.margin = '6px 0';
-    loadLastPageButton.style.background = '#7a7a7a';
-    loadLastPageButton.style.textAlign = 'center';
+    loadLastPageButton.textContent = 'Ladda sida ' + pageToLoad;
+    loadLastPageButton.setAttribute('style', `
+        font-size: 20px !important;
+        display: block !important;
+        width: 100% !important;
+        background: #7a7a7a !important;
+        text-align: center !important;
+        cursor: pointer !important;
+        padding: 10px 0 !important;
+        box-sizing: border-box !important;
+        border: none !important;
+        color: #fff !important;
+        overflow: visible !important;
+        pointer-events: auto !important;
+        position: relative !important;
+        z-index: 99999 !important;
+    `);
+
     loadLastPageButton.addEventListener('click', function() {
         initiatePageLoadBackward();
     });
@@ -718,6 +750,13 @@ function checkPostClosestToWindowCenter() {
 }
 
 function addPageSeparators(){
+    // Remove loading separator if present
+    const loadingSep = document.getElementById('loadingPageSeparator');
+    if (loadingSep) loadingSep.remove();
+
+    const btn = document.getElementById('loadLastPageButton');
+    if (btn && btn.disabled) btn.remove();
+
     document.querySelectorAll('.pageSeparator').forEach(e => e.remove());
 
     const posts = Array.from(document.querySelectorAll('.post'));
@@ -736,6 +775,7 @@ function addPageSeparators(){
             separator.textContent = `Sida ${currentPage}`;
             separator.style.fontSize = '20px';
             separator.style.background = '#7a7a7a';
+            separator.style.color = '#fff';
             separator.style.textAlign = 'center';
             separator.style.width = '100%';
             posts[i].parentNode.insertBefore(separator, posts[i]);

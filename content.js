@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-
+let isInitiatingPageLoad = false;
 let users = [];
 // let firstLoad = 1;
 let lowestPageLoaded = 0;
@@ -34,7 +34,28 @@ let infiniteScrollSetting = false;
 const fetchQueue = [];
 let isFetching = false;
 let scrollTimeout;
+function tryTriggerForwardLoad(preloadMargin = 800) {
+    try {
+        // only for thread pages
+        if (threadId.substring(0,2) !== '/t') return;
 
+        // already at last page?
+        if (highestPageLoaded >= highestPage) return;
+
+        // distance check: start loading when within preloadMargin px from bottom
+        const nearBottom = (window.innerHeight + Math.round(window.scrollY)) >= (document.body.offsetHeight - preloadMargin);
+        if (!nearBottom) return;
+
+        // guards: don't start if already initiating or we already queued a next page
+        if (isInitiatingPageLoad || nextPageLoaded === 1) return;
+
+        // mark queued and initiate (do NOT set isInitiatingPageLoad here)
+        nextPageLoaded = 1;
+        initiatePageLoadForward();
+    } catch (e) {
+        console.error('tryTriggerForwardLoad error', e);
+    }
+}
 //On first load, ensure settings exist, then load settings and start main
 function ensureDefaultSettings(callback) {
     const defaultSettings = {
@@ -358,24 +379,36 @@ function processFetchQueue() {
     isFetching = true;
 
     const url = fetchQueue.shift();
-    //console.log("fetchPostsFromPage: " + url);
 
     try {
+        if (!chrome.runtime || !chrome.runtime.sendMessage) {
+            console.warn("chrome.runtime.sendMessage not available. Re-queueing:", url);
+            setTimeout(() => fetchPostsFromPage(url), 1000);
+            isFetching = false;
+            return;
+        }
+
         chrome.runtime.sendMessage({ message: "fetchSite", url }, (response) => {
             isFetching = false;
+
             if (chrome.runtime.lastError) {
                 console.warn("sendMessage failed:", chrome.runtime.lastError.message);
-                // Re-queue for retry after a short delay
                 setTimeout(() => fetchPostsFromPage(url), 1000);
-            } else {
-                //console.log("url fetched:", response.response);
-                // Process next in queue
-                processFetchQueue();
+                return;
             }
+
+            if (response && response.response) {
+                addPostsToDom(response.response);
+            } else {
+                console.warn("No response received for", url);
+                setTimeout(() => fetchPostsFromPage(url), 1000);
+            }
+
+            processFetchQueue();
         });
     } catch (e) {
-        isFetching = false;
         console.error("sendMessage threw:", e);
+        isFetching = false;
         setTimeout(() => fetchPostsFromPage(url), 1000);
     }
 }
@@ -417,11 +450,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             if (dataPage) {
                 htmlPageNumber = parseInt(dataPage.getAttribute('data-page'));
                 navigationBars[htmlPageNumber] = navDiv.outerHTML;
-                //console.log("htmlPageNumber:" + htmlPageNumber);
                 changeNavBars();
                 updateFloatingDiv(htmlPageNumber);
             } else {
-                //console.log("dataPage element not found or has no 'data-page' attribute");
+                // fallback
             }
         }
 
@@ -430,9 +462,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 postsHtml = addPageNumberToPosts(postsHtml, htmlPageNumber);
             }
             addPostsToDom(postsHtml);
-            //console.log("posts added");
+            // posts added, allow next load
             nextPageLoaded = 0;
+            isInitiatingPageLoad = false;
             addLoadLastPageButton();
+        } else {
+            // no posts found -> reset flags so we can try again later
+            nextPageLoaded = 0;
+            isInitiatingPageLoad = false;
         }
     }
 });
@@ -556,14 +593,20 @@ function getThreadInfo(){
 };
 
 function initiatePageLoadForward(){
+    // extra guard to avoid duplicate initiations
+    if (isInitiatingPageLoad) return;
+
     startOrEnd='end';
     //console.log("initiateforward-highest:" + highestPage)
     //console.log("initiateforward-highestloaded:" + highestPageLoaded)
-    if (highestPageLoaded<highestPage){
+    if (highestPageLoaded < highestPage){
+        // mark initiating immediately so other scroll events won't start a second one
+        isInitiatingPageLoad = true;
+
         currentPage++;
         highestPageLoaded++;
         if (!pagesLoaded.includes(highestPageLoaded)){
-            let pageToLoadFrom=('https://www.flashback.org'+threadId+"p"+(highestPageLoaded))
+            let pageToLoadFrom = ('https://www.flashback.org' + threadId + "p" + (highestPageLoaded));
             // Insert loading separator at the end of posts
             const postsContainer = document.getElementById('posts');
             if (postsContainer && !document.getElementById('loadingPageSeparator')) {
@@ -584,6 +627,10 @@ function initiatePageLoadForward(){
             //console.log("pagesLoaded:"+pagesLoaded);
             history.replaceState(null,'',pageToLoadFrom);
         };
+    } else {
+        // nothing to load - make sure flags are reset so we don't lock future attempts
+        isInitiatingPageLoad = false;
+        nextPageLoaded = 0;
     }
 }
 function initiatePageLoadBackward(){
@@ -658,7 +705,26 @@ function addLoadLastPageButton(){
 
     container.insertBefore(loadLastPageButton, insertBeforeNode);
 }
+function setupMutationObserver() {
+    const target = document.body;
+    if (!target) {
+        // retry once DOM is ready
+        document.addEventListener("DOMContentLoaded", setupMutationObserver);
+        return;
+    }
 
+    const observer = new MutationObserver((mutationsList, observer) => {
+        for (let mutation of mutationsList) {
+            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                if (document.getElementById('multi-quote-selected')) {
+                    addSubmitQuoteButton();
+                }
+            }
+        }
+    });
+
+    observer.observe(target, { childList: true, subtree: true });
+}
 function addFloatingPageDiv() {
     if (threadId.substring(0, 2) === '/t') {
         const floatingDiv = document.createElement('div');
@@ -860,16 +926,18 @@ function main(){
                     addFloatingPageDiv();
                     updateFloatingDiv(currentPage);
                     fixMultiQuote();
+                    setupMutationObserver();
                     if (lowestPageLoaded>1){addLoadLastPageButton()};
                     window.onscroll = function(ev) {
                         if (scrollTimeout) clearTimeout(scrollTimeout);
                         scrollTimeout = setTimeout(() => {
                             checkPostClosestToWindowCenter();
-                            if ((window.innerHeight + Math.round(window.scrollY)) >= document.body.offsetHeight) {
-                                initiatePageLoadForward();
-                            }
+                            tryTriggerForwardLoad(800); // preload when ~800px from bottom
                             if (window.scrollY === 0) {
-                                addLoadLastPageButton();
+                                if (nextPageLoaded === 0 && threadId.substring(0,2) === '/t') {
+                                    addLoadLastPageButton();
+                                }
+                                nextPageLoaded = 1;
                             }
                         }, 150); // 150ms debounce
                     };
@@ -892,14 +960,9 @@ function main(){
                 if (lowestPageLoaded>1){addLoadLastPageButton()};
                 window.onscroll = function(ev) {
                     checkPostClosestToWindowCenter();
-                    if ((window.innerHeight + Math.round(window.scrollY)) >= document.body.offsetHeight) {
-                        if ((nextPageLoaded===0) && (threadId.substring(0,2)==='/t')){
-                            initiatePageLoadForward();
-                        }
-                        nextPageLoaded = 1;
-                    }
-                    if ((window.scrollY === 0)){
-                        if ((nextPageLoaded===0) && (threadId.substring(0,2)==='/t')){
+                    tryTriggerForwardLoad(800);
+                    if (window.scrollY === 0) {
+                        if (nextPageLoaded === 0 && threadId.substring(0,2) === '/t') {
                             addLoadLastPageButton();
                         }
                         nextPageLoaded = 1;
@@ -924,14 +987,12 @@ function reInitPlugin() {
         if (lowestPageLoaded>1){addLoadLastPageButton()};
         window.onscroll = function(ev) {
             checkPostClosestToWindowCenter();
-            if ((window.innerHeight + Math.round(window.scrollY)) >= document.body.offsetHeight) {
-                if ((nextPageLoaded===0) && (threadId.substring(0,2)==='/t')){
-                    initiatePageLoadForward();
-                }
-                nextPageLoaded = 1;
+            tryTriggerForwardLoad(800);
+            if (window.innerHeight + Math.round(window.scrollY) >= document.body.offsetHeight) {
+                // tryTriggerForwardLoad already handled initiation,
             }
-            if ((window.scrollY === 0)){
-                if ((nextPageLoaded===0) && (threadId.substring(0,2)==='/t')){
+            if (window.scrollY === 0) {
+                if (nextPageLoaded === 0 && threadId.substring(0,2) === '/t') {
                     addLoadLastPageButton();
                 }
                 nextPageLoaded = 1;

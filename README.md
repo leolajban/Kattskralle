@@ -12,7 +12,8 @@ Kattskrälle är ett Chrome-tillägg som gör Flashback-forum lite trevligare oc
 - 🖼️ **Förhandsvisa innehåll** – bädda in media direkt i tråden:  
   - Bilder och videofiler från vissa bildlänkar  
   - YouTube-videor  
-  - Spotify-länkar
+  - Spotify-länkar  
+[Se Screenshots](#screenshots)
 
 ### Installation
 1. Ladda ner projektet som ZIP eller klona repo:t.  
@@ -49,6 +50,7 @@ Kattskrälle is a Chrome extension that makes the Flashback forum a bit more ple
   - Images and videos from supported hosts  
   - YouTube videos  
   - Spotify links  
+[See Screenshots](#screenshots)
 
 ### Installation
 1. Download the project as a ZIP or clone the repo.  
@@ -69,4 +71,11 @@ All trademarks, logos, and names mentioned belong to their respective owners.
 ### License
 This project is licensed under the **GNU General Public License v3.0 (GPLv3)**.  
 You may use, modify, and distribute the code freely, **as long as you share your version under the same license**.  
+
 See [LICENSE](LICENSE) for the full text.
+
+## Screenshots 
+![scroll](/images/Scroll.gif) 
+![preview](/images/Preview.png) 
+![Ignore](/images/Ignore.png) 
+![settings](/images/settings.png)

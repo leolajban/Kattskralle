@@ -17,7 +17,6 @@
  */
 let isInitiatingPageLoad = false;
 let users = [];
-// let firstLoad = 1;
 let lowestPageLoaded = 0;
 let highestPageLoaded = 0;
 let highestPage = 0;
@@ -495,7 +494,6 @@ function changeNavBars() {
     } else {
         //console.log("Navbar for lowest page not saved yet:", lowestPageLoaded);
         // fallback: keep existing navbar
-        paginationElements[0].outerHTML = paginationElements[0].outerHTML;
     }
 
     // Update the second navigation bar (highest page), if it exists
@@ -505,7 +503,6 @@ function changeNavBars() {
         } else {
             //console.log("Navbar for highest page not saved yet:", highestPageLoaded);
             // fallback: keep existing navbar
-            paginationElements[1].outerHTML = paginationElements[1].outerHTML;
         }
     }
 };
@@ -696,7 +693,6 @@ function addLoadLastPageButton(){
         overflow: visible !important;
         pointer-events: auto !important;
         position: relative !important;
-        z-index: 99999 !important;
     `);
 
     loadLastPageButton.addEventListener('click', function() {
@@ -716,15 +712,14 @@ function setupMutationObserver() {
     const observer = new MutationObserver((mutationsList, observer) => {
         for (let mutation of mutationsList) {
             if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                if (document.getElementById('multi-quote-selected')) {
-                    addSubmitQuoteButton();
-                }
+                // No-op: previously called addSubmitQuoteButton, which does not exist
             }
         }
     });
 
     observer.observe(target, { childList: true, subtree: true });
 }
+
 function addFloatingPageDiv() {
     if (threadId.substring(0, 2) === '/t') {
         const floatingDiv = document.createElement('div');
@@ -735,8 +730,7 @@ function addFloatingPageDiv() {
         floatingDiv.style.backgroundColor = 'white';
         floatingDiv.style.color = 'white';
         floatingDiv.style.padding = '1px';
-        floatingDiv.style.zIndex = '1000';
-        floatingDiv.style.zIndex = '9999 !important';
+        floatingDiv.style.zIndex = '9999';
         floatingDiv.style.alignItems = 'center';
         floatingDiv.style.display = 'flex';
         document.body.appendChild(floatingDiv);
@@ -816,7 +810,6 @@ function checkPostClosestToWindowCenter() {
 }
 
 function addPageSeparators(){
-    // Remove loading separator if present
     const loadingSep = document.getElementById('loadingPageSeparator');
     if (loadingSep) loadingSep.remove();
 
@@ -866,41 +859,68 @@ function setCookie(name, value, days) {
     }
     document.cookie = name + "=" + value + "; path=/" + expires;
 }
+
 function fixMultiQuote() {
-    document.addEventListener("click", function(e) {
-        let btn = e.target.closest(".btn-quote-multiple");
-        if (!btn) return;
+    console.log("fixMultiQuote initialized");
 
-        e.preventDefault();
+    if (!document._multiQuoteClickBound) {
+        document.addEventListener("click", function(e) {
+            let btn = e.target.closest(".btn-quote-multiple");
+            if (!btn) return;
 
-        let postId = parseInt(btn.dataset.postid);
-        if (!postId) return;
+            e.preventDefault(); 
 
-        let postMessage = document.querySelector("#post_message_" + postId);
-        if (!postMessage) return;
+            let postId = parseInt(btn.dataset.postid);
+            if (!postId) return;
 
-        let qpostids = (getCookie("qpostids") ? getCookie("qpostids") + "," : "") + postId;
-        let postIdsArray = qpostids.split(",");
+            let postMessage = document.querySelector("#post_message_" + postId);
+            if (!postMessage) return;
 
-        postIdsArray = postIdsArray.filter(id => !(postMessage.classList.contains("quotem") && id == postId));
+            let qpostids = getCookie("qpostids") ? getCookie("qpostids") + "," : "";
+            let postIdsArray = qpostids.split(",");
 
-        qpostids = postIdsArray.length ? postIdsArray.join(",") : "";
-        setCookie("qpostids", qpostids, 1);
 
-        postMessage.classList.toggle("quotem");
-    });
-    const observer = new MutationObserver(mutations => {
-        mutations.forEach(mutation => {
-            mutation.addedNodes.forEach(node => {
-                if (node.nodeType === 1 && node.matches(".post")) {
-                    let quoteButtons = node.querySelectorAll(".btn-quote-multiple");
-                    quoteButtons.forEach(btn => btn.classList.add("quote-observed"));
-                }
-            });
+            postIdsArray = postIdsArray.filter(id => !(postMessage.classList.contains("quotem") && id == postId));
+
+            postMessage.classList.toggle("quotem");
+
+            qpostids = postIdsArray.length ? postIdsArray.join(",") : "";
+            if (postMessage.classList.contains("quotem")) {
+                qpostids = (qpostids ? qpostids + "," : "") + postId;
+            }
+
+            setCookie("qpostids", qpostids, 1);
         });
+
+        document._multiQuoteClickBound = true;
+    }
+
+    if (document._multiQuoteObserver) {
+        document._multiQuoteObserver.disconnect();
+    }
+
+    let observer = new MutationObserver(mutations => {
+        for (let mutation of mutations) {
+            for (let added of mutation.addedNodes) {
+                if (!(added instanceof HTMLElement)) continue;
+
+                added.querySelectorAll?.(".btn-quote-multiple").forEach(btn => {
+                    if (!btn.classList.contains("quote-observed")) {
+                        btn.classList.add("quote-observed");
+                    }
+                });
+
+                if (added.matches?.(".btn-quote-multiple")) {
+                    if (!added.classList.contains("quote-observed")) {
+                        added.classList.add("quote-observed");
+                    }
+                }
+            }
+        }
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
+    document._multiQuoteObserver = observer;
 }
 
 let fbqolFirstLoad = true;
@@ -932,7 +952,7 @@ function main(){
                         if (scrollTimeout) clearTimeout(scrollTimeout);
                         scrollTimeout = setTimeout(() => {
                             checkPostClosestToWindowCenter();
-                            tryTriggerForwardLoad(800); // preload when ~800px from bottom
+                            tryTriggerForwardLoad(800); 
                             if (window.scrollY === 0) {
                                 if (nextPageLoaded === 0 && threadId.substring(0,2) === '/t') {
                                     addLoadLastPageButton();
@@ -976,7 +996,6 @@ function main(){
     }
 }
 
-// Only run DOM hooks/event listeners that need to be restored after sleep/tab inactive
 function reInitPlugin() {
     findPosts();
     if (infiniteScrollSetting===true){
@@ -989,7 +1008,6 @@ function reInitPlugin() {
             checkPostClosestToWindowCenter();
             tryTriggerForwardLoad(800);
             if (window.innerHeight + Math.round(window.scrollY) >= document.body.offsetHeight) {
-                // tryTriggerForwardLoad already handled initiation,
             }
             if (window.scrollY === 0) {
                 if (nextPageLoaded === 0 && threadId.substring(0,2) === '/t') {
@@ -1004,9 +1022,9 @@ function reInitPlugin() {
 
 ensureDefaultSettings(loadSettings);
 
-// Re-initialize only DOM hooks/event listeners when the page becomes visible again (if the user switched tabs or minimized the browser)
 document.addEventListener('visibilitychange', function() {
     if (document.visibilityState === 'visible') {
         reInitPlugin();
     }
 });
+

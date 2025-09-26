@@ -22,7 +22,8 @@ function ensureDefaultSettings(callback) {
     const defaultSettings = {
         'Ignorera': true,
         'Previews': true,
-        'Infinite Scroll': true
+        'Infinite Scroll': true,
+        'Bypass Leaving Site': true
     };
 
     function saveDefaultsToChrome() {

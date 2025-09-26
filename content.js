@@ -30,6 +30,7 @@ let floatingDivPage = 0;
 let ignoreraSetting = false;
 let previewsSetting = false;
 let infiniteScrollSetting = false;
+let bypassLeavingSetting = false;
 const fetchQueue = [];
 let isFetching = false;
 let scrollTimeout;
@@ -115,6 +116,7 @@ function applySettings(settings) {
     ignoreraSetting = !!settings['Ignorera'];
     previewsSetting = !!settings['Previews'];
     infiniteScrollSetting = !!settings['Infinite Scroll'];
+    bypassLeavingSetting = !!settings['Bypass Leaving Site'];
 
     //console.log("Settings loaded:", {
     //    ignoreraSetting,
@@ -122,7 +124,7 @@ function applySettings(settings) {
     //    infiniteScrollSetting
     //});
 
-    if (!infiniteScrollSetting && !previewsSetting && !ignoreraSetting) {
+    if (!infiniteScrollSetting && !previewsSetting && !ignoreraSetting && !bypassLeavingSetting) {
         return;// Early exit if all settings are false
     }
     main();//only call main if any settings are activated. 
@@ -345,6 +347,9 @@ function addPreviewsToPosts() {
     });
 }
 
+
+function decodeLeaveHref(raw){try{if(!raw)return raw;const parsed=new URL(raw,window.location.origin);if(parsed.pathname.endsWith('/leave.php')){const u=parsed.searchParams.get('u');if(u)return decodeURIComponent(u)}return raw}catch(e){return raw}}
+function rewriteLeaveLinks(){const as=Array.from(document.querySelectorAll('a[href*="leave.php?u="],a[href*="/leave.php?u="]'));as.forEach(a=>{const nh=decodeLeaveHref(a.getAttribute('href'));if(nh&&nh!==a.getAttribute('href')){a.setAttribute('href',nh);a.removeAttribute('onclick');a.removeAttribute('target')}})}
 function addIgnoreButton(postNumber, userNameToButton) {
     var postUserInfo = document.getElementById(postNumber).querySelector('.post-user-info.small');
     if (postUserInfo) {
@@ -552,6 +557,7 @@ function addPostsToDom(postsToAdd){
             existingIds.add(postId);
         });
 
+        if(bypassLeavingSetting){rewriteLeaveLinks()}
         findPosts();          // Adds ignore buttons an previews
         addPageSeparators();  // adds page separators 
         addLoadLastPageButton();//adds load last page button if needed
@@ -712,6 +718,7 @@ function setupMutationObserver() {
     const observer = new MutationObserver((mutationsList, observer) => {
         for (let mutation of mutationsList) {
             if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                if(bypassLeavingSetting){rewriteLeaveLinks()}
                 // No-op: previously called addSubmitQuoteButton, which does not exist
             }
         }
@@ -925,6 +932,8 @@ function fixMultiQuote() {
 
 let fbqolFirstLoad = true;
 function main(){
+    if(bypassLeavingSetting){try{const u=new URLSearchParams(location.search).get('u');if(location.pathname.endsWith('/leave.php')&&u){location.replace(decodeURIComponent(u));return}}catch(e){}}
+
     getUsers(function(retrievedUsers) {
         users = retrievedUsers; 
         findPosts();
@@ -934,6 +943,7 @@ function main(){
             document.documentElement.style.visibility = 'hidden';
             document.addEventListener('DOMContentLoaded', function() {
                 try {
+                    if(bypassLeavingSetting){rewriteLeaveLinks()}
                     findPosts();
                 } catch(error){
                     //console.log('KATTSKRÄLLE:'+error);
@@ -965,6 +975,7 @@ function main(){
             });
         } else {
             try {
+                if(bypassLeavingSetting){rewriteLeaveLinks()}
                 findPosts();
             } catch(error){
                 //console.log('KATTSKRÄLLE:'+error);

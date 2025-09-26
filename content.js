@@ -205,19 +205,14 @@ function addPreviewsToPosts() {
     const videoExtensions = ['mp4', 'webm', 'ogg'];
 
     posts.forEach(post => {
-        if (post.querySelector('.FBQOLPreview')) return;
-
-        const previewDiv = document.createElement('div');
-        previewDiv.className = 'FBQOLPreview';
-        let added = false;
-
-        const urls = Array.from(post.querySelectorAll('a[href]'))
+        const anchors = Array.from(post.querySelectorAll('a[href]'))
             .filter(a => !a.closest('.post-clamped-text'))
-            .map(a => cleanHref(a.href));
+            .filter(a => !a.dataset.fbqolPreviewed);
 
         const seen = new Set();
 
-        urls.forEach(url => {
+        anchors.forEach(link => {
+            const url = cleanHref(link.href);
             if (!url) return;
             let m;
 
@@ -234,8 +229,8 @@ function addPreviewsToPosts() {
                 iframe.allowFullscreen = true;
                 iframe.style.display = 'block';
                 iframe.style.margin = '10px 0';
-                previewDiv.appendChild(iframe);
-                added = true;
+                link.insertAdjacentElement('afterend', iframe);
+                link.dataset.fbqolPreviewed = '1';
                 return;
             }
 
@@ -254,9 +249,9 @@ function addPreviewsToPosts() {
                 iframe.allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
                 iframe.frameBorder = 0;
 
-                previewDiv.appendChild(iframe);
+                link.insertAdjacentElement('afterend', iframe);
 
-                added = true;
+                link.dataset.fbqolPreviewed = '1';
                 return;
             }
 
@@ -281,11 +276,11 @@ function addPreviewsToPosts() {
                 iframe.allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
                 iframe.frameBorder = 0;
 
-                previewDiv.appendChild(iframe);
+                link.insertAdjacentElement('afterend', iframe);
             })
             .catch(e => console.error('Spotify oEmbed failed', e));
 
-            added = true;
+            link.dataset.fbqolPreviewed = '1';
             return;
             }
 
@@ -300,8 +295,8 @@ function addPreviewsToPosts() {
                     img.style.maxWidth = '100%';
                     img.style.display = 'block';
                     img.style.margin = '10px 0';
-                    previewDiv.appendChild(img);
-                    added = true;
+                    link.insertAdjacentElement('afterend', img);
+                    link.dataset.fbqolPreviewed = '1';
                     return;
                 }
             }
@@ -317,8 +312,8 @@ function addPreviewsToPosts() {
                 img.style.maxWidth = '100%';
                 img.style.display = 'block';
                 img.style.margin = '10px 0';
-                previewDiv.appendChild(img);
-                added = true;
+                link.insertAdjacentElement('afterend', img);
+                link.dataset.fbqolPreviewed = '1';
                 return;
             }
 
@@ -332,13 +327,13 @@ function addPreviewsToPosts() {
                 video.style.maxWidth = '100%';
                 video.style.display = 'block';
                 video.style.margin = '10px 0';
-                previewDiv.appendChild(video);
-                added = true;
+                link.insertAdjacentElement('afterend', video);
+                link.dataset.fbqolPreviewed = '1';
                 return;
             } 
         });
 
-        if (added) post.appendChild(previewDiv);
+        
     });
 }
 
@@ -1033,4 +1028,3 @@ document.addEventListener('visibilitychange', function() {
         reInitPlugin();
     }
 });
-

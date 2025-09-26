@@ -12,15 +12,20 @@ Kattskrälle är ett Chrome-tillägg som gör Flashback-forum lite trevligare oc
 - 🖼️ **Förhandsvisa innehåll** – bädda in media direkt i tråden:  
   - Bilder och videofiler från vissa bildlänkar  
   - YouTube-videor  
-  - Spotify-länkar  
+  - Spotify-länkar
+- ↪️ **Hoppa över bekräftelsesidor** – slipp mellanliggande bekräftelsesidor när du öppnar externa länkar.  
 [Se Screenshots](#screenshots)
 
-### Installation
+### Installation  
+**Alternativ A – Chrome Web Store**  
+-Installera tillägget direkt genom [Chrome Web Store](https://chromewebstore.google.com/detail/kattskr%C3%A4lle/fjpkphodnakdkehikggcfmfpbcbblhlc).  
+
+**Alternativ B – Installera manuellt**  
 1. Ladda ner projektet som ZIP eller klona repo:t.  
 2. Öppna Chrome och gå till `chrome://extensions/`.  
 3. Aktivera **Developer mode** (Utvecklarläge).  
 4. Klicka på **Load unpacked** och välj mappen med tillägget.  
-5. Tillägget aktiveras och fungerar direkt på [Flashback.org](https://www.flashback.org/).  
+5. Tillägget aktiveras och fungerar direkt på [Flashback.org](https://www.flashback.org/). 
 
 
 ### Status
@@ -49,15 +54,20 @@ Kattskrälle is a Chrome extension that makes the Flashback forum a bit more ple
 - 🖼️ **Inline previews** – embed media directly in threads:  
   - Images and videos from supported hosts  
   - YouTube videos  
-  - Spotify links  
-[See Screenshots](#screenshots)
+  - Spotify links
+- ↪️ **Bypass confirmation sites** – skip intermediate confirmation pages when opening external links.  
+  [See Screenshots](#screenshots)
 
-### Installation
-1. Download the project as a ZIP or clone the repo.  
-2. Open Chrome and go to `chrome://extensions/`.  
-3. Enable **Developer mode**.  
-4. Click **Load unpacked** and select the folder containing the extension.  
-5. The extension is now active and works on [Flashback.org](https://www.flashback.org/).  
+### Installation  
+**Option A – Chrome Web Store**  
+-Install the extension directly from the [Chrome Web Store](https://chromewebstore.google.com/detail/kattskr%C3%A4lle/fjpkphodnakdkehikggcfmfpbcbblhlc).  
+
+**Option B – Manual Installation**  
+- Download the project as a ZIP or clone the repo.  
+- Open Chrome and go to `chrome://extensions/`.  
+- Enable **Developer mode**.  
+- Click **Load unpacked** and select the folder containing the extension.  
+- The extension is now active and works on [Flashback.org](https://www.flashback.org/).  
 
 
 ### Status
@@ -79,3 +89,4 @@ See [LICENSE](LICENSE) for the full text.
 ![preview](/images/Preview.png) 
 ![Ignore](/images/Ignore.png) 
 ![settings](/images/settings.png)
+

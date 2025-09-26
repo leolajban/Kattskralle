@@ -61,7 +61,8 @@ function ensureDefaultSettings(callback) {
     const defaultSettings = {
         'Ignorera': true,
         'Previews': true,
-        'Infinite Scroll': true
+        'Infinite Scroll': true,
+        'Bypass Leaving Site': true
     };
 
     function saveDefaultsToChrome() {
@@ -117,12 +118,6 @@ function applySettings(settings) {
     previewsSetting = !!settings['Previews'];
     infiniteScrollSetting = !!settings['Infinite Scroll'];
     bypassLeavingSetting = !!settings['Bypass Leaving Site'];
-
-    //console.log("Settings loaded:", {
-    //    ignoreraSetting,
-    //    previewsSetting,
-    //    infiniteScrollSetting
-    //});
 
     if (!infiniteScrollSetting && !previewsSetting && !ignoreraSetting && !bypassLeavingSetting) {
         return;// Early exit if all settings are false

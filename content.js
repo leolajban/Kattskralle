@@ -222,97 +222,69 @@ function addPreviewsToPosts() {
     }
 
     function extractContextAroundUrl(post, url, originalUrl, element, linkColor, contextLength = 100) {
-        // Get all text nodes and link elements to preserve original formatting
-        const walker = document.createTreeWalker(
-            post,
-            NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT,
-            {
-                acceptNode: function(node) {
-                    if (node.nodeType === Node.TEXT_NODE) return NodeFilter.FILTER_ACCEPT;
-                    if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'A') return NodeFilter.FILTER_ACCEPT;
-                    return NodeFilter.FILTER_SKIP;
-                }
-            }
-        );
-
-        let nodes = [];
-        let node;
-        while (node = walker.nextNode()) {
-            nodes.push(node);
-        }
-
-        // Find the link node
-        let linkIndex = -1;
-        for (let i = 0; i < nodes.length; i++) {
-            if (nodes[i].nodeType === Node.ELEMENT_NODE && 
-                nodes[i].tagName === 'A') {
-                // Try to match by cleaned URL since originalUrl might have formatting issues
-                const nodeCleanUrl = cleanHref(nodes[i].href);
-                if (nodeCleanUrl === url || nodes[i].href === originalUrl) {
-                    linkIndex = i;
-                    break;
-                }
-            }
-        }
-
+        // Get the full text content of the post
+        const postText = post.textContent || post.innerText || '';
+        
+        // Find the link text in the post
+        const linkText = element.textContent || element.innerText || url;
+        const linkIndex = postText.indexOf(linkText);
+        
         if (linkIndex === -1) {
-            // Fallback: if we can't find the link in the tree walk, create a simple context
-            const postText = post.textContent || post.innerText || '';
-            const linkText = element.textContent || url;
-            
-            // Try to find the link text in the post text
-            const linkTextIndex = postText.indexOf(linkText);
-            if (linkTextIndex !== -1) {
-                const start = Math.max(0, linkTextIndex - contextLength);
-                let contextText = postText.substring(start, linkTextIndex);
-                if (start > 0) contextText = '...' + contextText;
-                
-                return contextText + `<a href="${url}" style="color: ${linkColor}; font-weight: bold;">${linkText}</a>`;
-            }
-            
-            // Ultimate fallback: just return the styled link
-            return `<a href="${url}" style="color: ${linkColor}; font-weight: bold;">${url}</a>`;
+            // Fallback: just return the styled link
+            return `<a href="${url}" style="color: ${linkColor}; font-weight: bold;">${linkText}</a>`;
         }
-
-        // Check if the previous node is a link (to avoid collisions)
-        const prevNodeIsLink = linkIndex > 0 && 
-                             nodes[linkIndex - 1].nodeType === Node.ELEMENT_NODE && 
-                             nodes[linkIndex - 1].tagName === 'A';
-
-        // Build context - only text before + the link
-        let contextNodes = [];
-        let charCount = 0;
         
-        // Only add text nodes before the link (skip if previous is a link)
-        if (!prevNodeIsLink) {
-            for (let i = linkIndex - 1; i >= 0 && charCount < contextLength; i--) {
-                if (nodes[i].nodeType === Node.TEXT_NODE) {
-                    const text = nodes[i].textContent;
-                    if (charCount + text.length <= contextLength) {
-                        contextNodes.unshift(nodes[i].cloneNode(true));
-                        charCount += text.length;
-                    } else {
-                        const remainingChars = contextLength - charCount;
-                        const truncatedText = '...' + text.slice(-remainingChars);
-                        const textNode = document.createTextNode(truncatedText);
-                        contextNodes.unshift(textNode);
-                        break;
-                    }
-                } else if (nodes[i].nodeType === Node.ELEMENT_NODE && nodes[i].tagName === 'A') {
-                    break;
-                }
+        // Calculate boundaries
+        const beforeStart = Math.max(0, linkIndex - contextLength);
+        const afterEnd = Math.min(postText.length, linkIndex + linkText.length + contextLength);
+        
+        // Extract text before and after
+        let beforeText = postText.substring(beforeStart, linkIndex);
+        let afterText = postText.substring(linkIndex + linkText.length, afterEnd);
+        
+        // Check for quotes in before text - stop at last [QUOTE
+        const quoteStart = beforeText.lastIndexOf('[QUOTE');
+        if (quoteStart !== -1) {
+            const quoteEnd = beforeText.indexOf(']', quoteStart);
+            if (quoteEnd !== -1) {
+                beforeText = beforeText.substring(quoteEnd + 1);
             }
         }
-
-        const linkClone = nodes[linkIndex].cloneNode(true);
-        linkClone.style.color = linkColor;
-        linkClone.style.fontWeight = 'bold';
-        contextNodes.push(linkClone);
-
-        const container = document.createElement('span');
-        contextNodes.forEach(node => container.appendChild(node));
         
-        return container.innerHTML;
+        // Check for quotes in after text - stop at first [/QUOTE]
+        const quoteEndIndex = afterText.indexOf('[/QUOTE]');
+        if (quoteEndIndex !== -1) {
+            afterText = afterText.substring(0, quoteEndIndex);
+        }
+        
+        // Check for other links in before text - stop after last link
+        const linkPattern = /https?:\/\/[^\s\]]+/gi;
+        let beforeMatch;
+        let lastLinkEnd = -1;
+        while ((beforeMatch = linkPattern.exec(beforeText)) !== null) {
+            lastLinkEnd = beforeMatch.index + beforeMatch[0].length;
+        }
+        if (lastLinkEnd !== -1) {
+            beforeText = beforeText.substring(lastLinkEnd);
+        }
+        
+        // Check for other links in after text - stop before first link
+        linkPattern.lastIndex = 0; // Reset regex
+        const afterMatch = linkPattern.exec(afterText);
+        if (afterMatch !== null) {
+            afterText = afterText.substring(0, afterMatch.index);
+        }
+        
+        // Add ellipsis if we truncated
+        if (beforeStart > 0 && beforeText.length > 0) {
+            beforeText = '...' + beforeText;
+        }
+        if (afterEnd < postText.length && afterText.length > 0) {
+            afterText = afterText + '...';
+        }
+        
+        // Return the combined result
+        return beforeText + `<a href="${url}" style="color: ${linkColor}; font-weight: bold; font-size: 12px;">${linkText}</a>` + afterText;
     }
 
     const imageExtensions = ['jpg','jpeg','png','gif','webp','bmp'];
@@ -400,16 +372,24 @@ function addPreviewsToPosts() {
                 element.style.color = linkColor;
                 element.style.fontWeight = 'bold';
 
+                const wrapperDiv = document.createElement('div');
+                wrapperDiv.style.border = '2px solid #ccc';
+                wrapperDiv.style.borderRadius = '8px';
+                wrapperDiv.style.padding = '10px';
+                wrapperDiv.style.marginBottom = '5px';
+                wrapperDiv.style.backgroundColor = 'transparent';
+
                 const contextDiv = document.createElement('div');
                 contextDiv.style.marginBottom = '10px';
                 contextDiv.style.padding = '8px';
                 contextDiv.style.backgroundColor = 'transparent';
                 contextDiv.style.borderRadius = '4px';
-                contextDiv.style.fontSize = '14px';
+                contextDiv.style.fontSize = '12px';
+                contextDiv.style.color = '#666';
                 
                 const context = extractContextAroundUrl(post, url, originalUrl, element, linkColor);
                 contextDiv.innerHTML = context;
-                contentContainer.appendChild(contextDiv);
+                wrapperDiv.appendChild(contextDiv);
                 
                 const iframe = document.createElement('iframe');
                 iframe.width = '560';
@@ -420,7 +400,9 @@ function addPreviewsToPosts() {
                 iframe.allowFullscreen = true;
                 iframe.style.display = 'block';
                 iframe.style.margin = '10px 0 20px 0';
-                contentContainer.appendChild(iframe);
+                wrapperDiv.appendChild(iframe);
+                
+                contentContainer.appendChild(wrapperDiv);
                 added = true;
                 return;
             }
@@ -434,17 +416,25 @@ function addPreviewsToPosts() {
                 element.style.color = linkColor;
                 element.style.fontWeight = 'bold';
 
+                const wrapperDiv = document.createElement('div');
+                wrapperDiv.style.border = '2px solid #ccc';
+                wrapperDiv.style.borderRadius = '8px';
+                wrapperDiv.style.padding = '10px';
+                wrapperDiv.style.marginBottom = '5px';
+                wrapperDiv.style.backgroundColor = 'transparent';
+
                 // Add context and link
                 const contextDiv = document.createElement('div');
                 contextDiv.style.marginBottom = '10px';
                 contextDiv.style.padding = '8px';
                 contextDiv.style.backgroundColor = 'transparent';
                 contextDiv.style.borderRadius = '4px';
-                contextDiv.style.fontSize = '14px';
+                contextDiv.style.fontSize = '12px';
+                contextDiv.style.color = '#666';
                 
                 const context = extractContextAroundUrl(post, url, originalUrl, element, linkColor);
                 contextDiv.innerHTML = context;
-                contentContainer.appendChild(contextDiv);
+                wrapperDiv.appendChild(contextDiv);
 
                 const iframe = document.createElement('iframe');
                 iframe.src = `https://www.tiktok.com/embed/v2/${m[2]}`;
@@ -456,7 +446,8 @@ function addPreviewsToPosts() {
                 iframe.allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
                 iframe.frameBorder = 0;
 
-                contentContainer.appendChild(iframe);
+                wrapperDiv.appendChild(iframe);
+                contentContainer.appendChild(wrapperDiv);
                 added = true;
                 return;
             }
@@ -470,17 +461,25 @@ function addPreviewsToPosts() {
                 element.style.color = linkColor;
                 element.style.fontWeight = 'bold';
                 
+                const wrapperDiv = document.createElement('div');
+                wrapperDiv.style.border = '2px solid #ccc';
+                wrapperDiv.style.borderRadius = '8px';
+                wrapperDiv.style.padding = '10px';
+                wrapperDiv.style.marginBottom = '5px';
+                wrapperDiv.style.backgroundColor = 'transparent';
+                
                 // Add context and link
                 const contextDiv = document.createElement('div');
                 contextDiv.style.marginBottom = '10px';
                 contextDiv.style.padding = '8px';
                 contextDiv.style.backgroundColor = 'transparent';
                 contextDiv.style.borderRadius = '4px';
-                contextDiv.style.fontSize = '14px';
+                contextDiv.style.fontSize = '12px';
+                contextDiv.style.color = '#666';
                 
                 const context = extractContextAroundUrl(post, url, originalUrl, element, linkColor);
                 contextDiv.innerHTML = context;
-                contentContainer.appendChild(contextDiv);
+                wrapperDiv.appendChild(contextDiv);
                 
                 fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(url)}`)
                     .then(res => res.json())
@@ -498,10 +497,11 @@ function addPreviewsToPosts() {
                         iframe.allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
                         iframe.frameBorder = 0;
 
-                        contentContainer.appendChild(iframe);
+                        wrapperDiv.appendChild(iframe);
                     })
                     .catch(e => console.error('Spotify oEmbed failed', e));
 
+                contentContainer.appendChild(wrapperDiv);
                 added = true;
                 return;
             }
@@ -517,24 +517,35 @@ function addPreviewsToPosts() {
                     element.style.color = linkColor;
                     element.style.fontWeight = 'bold';
                     
+                    const wrapperDiv = document.createElement('div');
+                    wrapperDiv.style.border = '2px solid #ccc';
+                    wrapperDiv.style.borderRadius = '8px';
+                    wrapperDiv.style.padding = '10px';
+                    wrapperDiv.style.marginBottom = '5px';
+                    wrapperDiv.style.backgroundColor = 'transparent';
+                    
                     // Add context and link
                     const contextDiv = document.createElement('div');
                     contextDiv.style.marginBottom = '10px';
                     contextDiv.style.padding = '8px';
                     contextDiv.style.backgroundColor = 'transparent';
                     contextDiv.style.borderRadius = '4px';
-                    contextDiv.style.fontSize = '14px';
+                    contextDiv.style.fontSize = '12px';
+                    contextDiv.style.color = '#666';
                     
                     const context = extractContextAroundUrl(post, url, originalUrl, element, linkColor);
                     contextDiv.innerHTML = context;
-                    contentContainer.appendChild(contextDiv);
+                    wrapperDiv.appendChild(contextDiv);
                     
                     const img = document.createElement('img');
                     img.src = imgUrl;
-                    img.style.maxWidth = '100%';
+                    img.style.width = '100%';
+                    img.style.height = 'auto';
                     img.style.display = 'block';
                     img.style.margin = '10px 0 20px 0';
-                    contentContainer.appendChild(img);
+                    wrapperDiv.appendChild(img);
+                    
+                    contentContainer.appendChild(wrapperDiv);
                     added = true;
                     return;
                 }
@@ -552,24 +563,35 @@ function addPreviewsToPosts() {
                 element.style.color = linkColor;
                 element.style.fontWeight = 'bold';
                 
+                const wrapperDiv = document.createElement('div');
+                wrapperDiv.style.border = '2px solid #ccc';
+                wrapperDiv.style.borderRadius = '8px';
+                wrapperDiv.style.padding = '10px';
+                wrapperDiv.style.marginBottom = '5px';
+                wrapperDiv.style.backgroundColor = 'transparent';
+                
                 // Add context and link
                 const contextDiv = document.createElement('div');
                 contextDiv.style.marginBottom = '10px';
                 contextDiv.style.padding = '8px';
                 contextDiv.style.backgroundColor = 'transparent';
                 contextDiv.style.borderRadius = '4px';
-                contextDiv.style.fontSize = '14px';
+                contextDiv.style.fontSize = '12px';
+                contextDiv.style.color = '#666';
                 
                 const context = extractContextAroundUrl(post, url, originalUrl, element, linkColor);
                 contextDiv.innerHTML = context;
-                contentContainer.appendChild(contextDiv);
+                wrapperDiv.appendChild(contextDiv);
                 
                 const img = document.createElement('img');
                 img.src = url;
-                img.style.maxWidth = '100%';
+                img.style.width = '100%';
+                img.style.height = 'auto';
                 img.style.display = 'block';
                 img.style.margin = '10px 0 20px 0';
-                contentContainer.appendChild(img);
+                wrapperDiv.appendChild(img);
+                
+                contentContainer.appendChild(wrapperDiv);
                 added = true;
                 return;
             }
@@ -584,17 +606,25 @@ function addPreviewsToPosts() {
                 element.style.color = linkColor;
                 element.style.fontWeight = 'bold';
                 
+                const wrapperDiv = document.createElement('div');
+                wrapperDiv.style.border = '2px solid #ccc';
+                wrapperDiv.style.borderRadius = '8px';
+                wrapperDiv.style.padding = '10px';
+                wrapperDiv.style.marginBottom = '5px';
+                wrapperDiv.style.backgroundColor = 'transparent';
+                
                 // Add context and link
                 const contextDiv = document.createElement('div');
                 contextDiv.style.marginBottom = '10px';
                 contextDiv.style.padding = '8px';
                 contextDiv.style.backgroundColor = 'transparent';
                 contextDiv.style.borderRadius = '4px';
-                contextDiv.style.fontSize = '14px';
+                contextDiv.style.fontSize = '12px';
+                contextDiv.style.color = '#666';
                 
                 const context = extractContextAroundUrl(post, url, originalUrl, element, linkColor);
                 contextDiv.innerHTML = context;
-                contentContainer.appendChild(contextDiv);
+                wrapperDiv.appendChild(contextDiv);
                 
                 const video = document.createElement('video');
                 video.src = url;
@@ -602,7 +632,9 @@ function addPreviewsToPosts() {
                 video.style.maxWidth = '100%';
                 video.style.display = 'block';
                 video.style.margin = '10px 0 20px 0';
-                contentContainer.appendChild(video);
+                wrapperDiv.appendChild(video);
+                
+                contentContainer.appendChild(wrapperDiv);
                 added = true;
                 return;
             } 
@@ -611,7 +643,6 @@ function addPreviewsToPosts() {
         if (added) post.appendChild(previewDiv);
     });
 }
-
 
 function decodeLeaveHref(raw){try{if(!raw)return raw;const parsed=new URL(raw,window.location.origin);if(parsed.pathname.endsWith('/leave.php')){const u=parsed.searchParams.get('u');if(u)return decodeURIComponent(u)}return raw}catch(e){return raw}}
 function rewriteLeaveLinks(){const as=Array.from(document.querySelectorAll('a[href*="leave.php?u="],a[href*="/leave.php?u="]'));as.forEach(a=>{const nh=decodeLeaveHref(a.getAttribute('href'));if(nh&&nh!==a.getAttribute('href')){a.setAttribute('href',nh);a.removeAttribute('onclick');a.removeAttribute('target')}})}
@@ -1315,4 +1346,3 @@ document.addEventListener('visibilitychange', function() {
         reInitPlugin();
     }
 });
-

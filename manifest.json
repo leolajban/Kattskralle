@@ -29,8 +29,7 @@
   "content_scripts": [
     {
       "matches": [
-        "https://www.flashback.org/*",
-        "http://www.flashback.org/*"
+        "*://*.flashback.org/*"
       ],
       "js": ["content.js"],
       "run_at": "document_start"

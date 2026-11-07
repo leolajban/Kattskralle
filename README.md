@@ -101,12 +101,31 @@ See [LICENSE](LICENSE) for the full text.
 ![img4](/images/img4.jpg)
 ![img5](/images/img5.jpg)
 ![img6](/images/img6.jpg)
-![scroll](/images/Scroll.gif) 
+![scroll](/images/Scroll.gif)
 
+---
 
+## Kodstruktur / Code structure
 
+Tillägget är uppdelat i moduler – en fil per funktion som kan slås av/på i inställningarna. Filerna laddas i den ordning de står i `manifest.json` (de delar samma globala scope, `core/bootstrap.js` laddas sist).  
+The extension is split into modules - one file per feature that can be toggled in the settings. Files are loaded in the order listed in `manifest.json` (they share one global scope; `core/bootstrap.js` is loaded last).
 
-
-
-
-
+```
+src/
+  core/
+    settings.js              Settings flags, defaults, loading of saved settings
+    state.js                 Shared state (current thread id)
+    functions-div.js         Shared "Kattskrälle extension" button row
+    find-posts.js            Runs the per-post features over the posts on the page
+    bootstrap.js             main(), re-init and page level listeners (entry point)
+  features/
+    ignore.js                Ignorera + Ignorera även i citat (placeholder for hidden posts)
+    previews.js              Previews
+    bypass-leaving-site.js   Bypass Leaving Site
+    infinite-scroll.js       Infinite Scroll
+    multi-quote-fix.js       Multi-quote (Citera+) support for Infinite Scroll
+    thread-tracking.js       Visa Trådskapare (TS) + Markera visade trådar
+    drafts.js                Spara & ladda utkast
+    search-links.js          Sök länkar
+    thread-chat.js           Trådchatt
+```

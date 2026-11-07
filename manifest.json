@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Kattskrälle",
   "description": "The FB Forum quality of life plugin.",
-  "version": "1.6",
+  "version": "1.7",
   "action": {
     "default_popup": "index.html",
     "default_icon": {
@@ -32,7 +32,22 @@
         "https://www.flashback.org/*",
         "http://www.flashback.org/*"
       ],
-      "js": ["content.js"],
+      "js": [
+        "src/core/settings.js",
+        "src/core/state.js",
+        "src/core/functions-div.js",
+        "src/features/ignore.js",
+        "src/features/previews.js",
+        "src/features/bypass-leaving-site.js",
+        "src/features/infinite-scroll.js",
+        "src/features/multi-quote-fix.js",
+        "src/features/thread-tracking.js",
+        "src/features/drafts.js",
+        "src/features/search-links.js",
+        "src/features/thread-chat.js",
+        "src/core/find-posts.js",
+        "src/core/bootstrap.js"
+      ],
       "run_at": "document_start"
     }
   ]
